@@ -92,6 +92,18 @@ public class CucumberPosSteps {
     }
 
     // TODO: Add Given step for new scenario
+    @Given("a POS list that contains 3 POS entries, a POS that is to be updated + its name")
+    public void aPosListThatContainsThreePOSAndAPosToUpdateAndItsName(List<PosDto> posList) {
+        List<PosDto> retrievedPosList = retrievePos();
+        assertThat(retrievedPosList).isEmpty();
+        createdPosList = createPos(posList);
+        assertThat(createdPosList).size().isEqualTo(posList.size());
+        retrievedPosList = retrievePos();
+        assertThat(retrievedPosList).size().isEqualTo(3);
+        assertThat(retrievedPosList)
+                .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id", "createdAt", "updatedAt")
+                .containsExactlyInAnyOrderElementsOf(createdPosList);
+    }
 
     // When -----------------------------------------------------------------------
 
@@ -101,7 +113,28 @@ public class CucumberPosSteps {
         assertThat(createdPosList).size().isEqualTo(posList.size());
     }
 
+    @When("I select the POS with the following name")
+    public void selectThePOSWithTheFollowingName(String name) {
+        assertThat(name != null && !name.isEmpty());
+        name = name.trim();
+        updatedPos = retrievePosByName(name);
+        //Ich verstehe nicht, warum hier der Status-Code <500> ausgegeben wird. Hat der Name irgendwelche Leerzeichen?
+        assertThat(updatedPos).isNotNull();
+    }
     // TODO: Add When step for new scenario
+    @When("I update one POS with the following elements")
+    public void updatePosWithTheFollowingValuesAtGivenName(List<PosDto> posListContainingPosToUpdate) {
+        PosDto posToUpdate = posListContainingPosToUpdate.getFirst();
+        assertThat(posToUpdate).isNotNull();
+        assert updatedPos.id() != null;
+        for (PosDto posDto : createdPosList) {
+            assert posDto.id() != null;
+            if (posDto.id().equals(updatedPos.id())) {
+                posDto = posToUpdate;
+                assertThat(posDto).isNotNull();
+            }
+        }
+    }
 
     // Then -----------------------------------------------------------------------
 
@@ -114,4 +147,20 @@ public class CucumberPosSteps {
     }
 
     // TODO: Add Then step for new scenario
+    @Then("the POS list should contain the same elements in the same order except for the updated POS")
+    public void thePosListShouldContainTheSameElementsInTheSameOrderExceptForTheUpdatedPos() {
+        List<PosDto> retrievedPosList = retrievePos();
+        assertThat(updatedPos.id()).isNotNull();
+        for (PosDto posDto : retrievedPosList) {
+            assert posDto.id() != null;
+            if (posDto.id().equals(updatedPos.id())) {
+                assertThat(posDto).isNotNull();
+                assertThat(retrievedPosList.get(Math.toIntExact(updatedPos.id())))
+                        .isNotEqualTo(createdPosList.get(Math.toIntExact(updatedPos.id())));
+            } else  {
+                assertThat(retrievedPosList.get(Math.toIntExact(updatedPos.id())))
+                        .isEqualTo(createdPosList.get(Math.toIntExact(updatedPos.id())));
+            }
+        }
+    }
 }
